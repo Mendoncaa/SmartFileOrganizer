@@ -64,7 +64,7 @@
 
 | Etapa | Descrição | Status |
 |---|---|---|
-| 8.1 | `tray.py` — ícone + menu | ⬜ |
+| 8.1 | `tray.py` — ícone + menu | ✅ |
 | 8.2 | `dashboard.py` — logs tempo real | ⬜ |
 | 8.3 | `rules_editor.py` — editor visual | ⬜ |
 
