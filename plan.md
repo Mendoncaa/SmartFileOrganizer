@@ -47,10 +47,10 @@
 
 | Etapa | Descrição | Status |
 |---|---|---|
-| 6.1 | `content_reader.py` — extração de texto | ⬜ |
-| 6.2 | `ai_engine.py` — classificação via Ollama | ⬜ |
-| 6.3 | Integrar AI como fallback no dispatcher | ⬜ |
-| 6.4 | Testes com mocking do Ollama | ⬜ |
+| 6.1 | `content_reader.py` — extração de texto | ✅ |
+| 6.2 | `ai_engine.py` — classificação via Ollama | ✅ |
+| 6.3 | Integrar AI como fallback no dispatcher | ✅ |
+| 6.4 | Testes com mocking do Ollama | ✅ |
 
 ## Fase 7: IPC — Comunicação Core↔UI
 
