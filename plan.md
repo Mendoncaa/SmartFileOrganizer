@@ -72,13 +72,13 @@
 
 | Etapa | Descrição | Status |
 |---|---|---|
-| 9.1 | `windows_service.py` | ⬜ |
-| 9.2 | `unix_daemon.py` + systemd unit | ⬜ |
-| 9.3 | Scripts install/uninstall | ⬜ |
+| 9.1 | `windows_service.py` | ✅ |
+| 9.2 | `unix_daemon.py` + systemd unit | ✅ |
+| 9.3 | Scripts install/uninstall | ✅ |
 
 ## Fase 10: Packaging + Distribuição
 
 | Etapa | Descrição | Status |
 |---|---|---|
 | 10.1 | PyInstaller (executáveis) | ⬜ |
-| 10.2 | README + documentação | ⬜ |
+| 10.2 | README + documentação | ✅ |
