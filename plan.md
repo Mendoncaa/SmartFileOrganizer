@@ -56,9 +56,9 @@
 
 | Etapa | Descrição | Status |
 |---|---|---|
-| 7.1 | `ipc_server.py` — pub/sub de eventos | ⬜ |
-| 7.2 | `ipc_client.py` — subscrição + comandos | ⬜ |
-| 7.3 | Teste de integração IPC | ⬜ |
+| 7.1 | `ipc_server.py` — pub/sub de eventos | ✅ |
+| 7.2 | `ipc_client.py` — subscrição + comandos | ✅ |
+| 7.3 | Teste de integração IPC | ✅ |
 
 ## Fase 8: UI — Tray Icon + Dashboard
 
