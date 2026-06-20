@@ -40,8 +40,8 @@
 
 | Etapa | Descrição | Status |
 |---|---|---|
-| 5.1 | `dispatcher.py` — pipeline completo | ⬜ |
-| 5.2 | Teste de integração end-to-end | ⬜ |
+| 5.1 | `dispatcher.py` — pipeline completo | ✅ |
+| 5.2 | Teste de integração end-to-end | ✅ |
 
 ## Fase 6: Core — IA Local (Ollama)
 
