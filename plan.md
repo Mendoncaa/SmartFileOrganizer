@@ -16,9 +16,9 @@
 
 | Etapa | Descrição | Status |
 |---|---|---|
-| 2.1 | `watcher.py` — detecção de ficheiros novos via watchdog | ⬜ |
-| 2.2 | Debounce/estabilização (esperar ficheiro completar download) | ⬜ |
-| 2.3 | Testes unitários do watcher | ⬜ |
+| 2.1 | `watcher.py` — detecção de ficheiros novos via watchdog | ✅ |
+| 2.2 | Debounce/estabilização (esperar ficheiro completar download) | ✅ |
+| 2.3 | Testes unitários do watcher | ✅ |
 
 ## Fase 3: Core — Motor de Regras
 
