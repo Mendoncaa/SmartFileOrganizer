@@ -1,6 +1,6 @@
 """Dispatcher — orchestrates the file organization pipeline.
 
-Pipeline: file detected → rule matching → move file → emit event.
+Pipeline: file detected → rule matching → (AI fallback) → move file → emit event.
 """
 
 from __future__ import annotations
@@ -8,7 +8,8 @@ from __future__ import annotations
 from pathlib import Path  # noqa: TC003 — used at runtime
 from typing import TYPE_CHECKING
 
-from src.core.analyzer.rule_engine import find_matching_rule
+from src.core.analyzer.ai_engine import AIEngine
+from src.core.analyzer.rule_engine import find_matching_rule, resolve_destination_template
 from src.core.mover import MoveError, UndoLog, move_file
 from src.shared.constants import EventType
 from src.shared.logging import get_logger
@@ -40,6 +41,11 @@ class Dispatcher:
         self._settings = settings
         self._undo_log = undo_log
         self._event_listeners: list[callable] = []
+        self._ai_engine: AIEngine | None = None
+
+        # Initialize AI engine if enabled
+        if settings.ai.enabled:
+            self._ai_engine = AIEngine(settings.ai, rules_config)
 
     def add_event_listener(self, listener: callable) -> None:
         """Register a listener to receive FileEvent notifications."""
@@ -59,8 +65,9 @@ class Dispatcher:
         Steps:
             1. Verify file still exists
             2. Match against rules (highest priority first)
-            3. If match: move file to resolved destination
-            4. If no match: skip (future: send to AI fallback)
+            3. If no rule match: try AI classification (fallback)
+            4. If match: move file to resolved destination
+            5. If still no match: skip
 
         Args:
             file_path: Path to the newly detected file.
@@ -84,7 +91,18 @@ class Dispatcher:
         match = find_matching_rule(self._rules, file_path)
 
         if match is None:
-            # No rule matched — skip for now (AI fallback in Fase 6)
+            # Step 3: Try AI fallback
+            ai_rule = self._try_ai_classification(file_path)
+            if ai_rule is not None:
+                destination = resolve_destination_template(ai_rule.destination, file_path)
+                # Create a synthetic match for the move step
+                from src.core.analyzer.rule_engine import RuleMatch
+
+                match = RuleMatch(rule=ai_rule, resolved_destination=destination)
+                logger.info("ai_fallback_matched", file=file_path.name, rule=ai_rule.name)
+
+        if match is None:
+            # No rule and no AI match — skip
             event = FileEvent(
                 event_type=EventType.FILE_SKIPPED,
                 source_path=file_path,
@@ -138,3 +156,15 @@ class Dispatcher:
         )
         self._emit_event(event)
         return event
+
+    def _try_ai_classification(self, file_path: Path) -> object | None:
+        """Attempt to classify a file using the AI engine.
+
+        Returns:
+            A Rule object if AI classification succeeds, None otherwise.
+        """
+        if self._ai_engine is None or not self._ai_engine.is_available:
+            return None
+
+        logger.debug("trying_ai_classification", file=file_path.name)
+        return self._ai_engine.get_matching_rule(file_path)
