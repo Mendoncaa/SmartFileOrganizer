@@ -24,9 +24,9 @@
 
 | Etapa | Descrição | Status |
 |---|---|---|
-| 3.1 | `rule_engine.py` — matching por extensão, regex, tamanho | ⬜ |
-| 3.2 | Templates dinâmicos no destino (`{year}`, `{month}`, `{ext}`) | ⬜ |
-| 3.3 | Testes unitários do rule engine | ⬜ |
+| 3.1 | `rule_engine.py` — matching por extensão, regex, tamanho | ✅ |
+| 3.2 | Templates dinâmicos no destino (`{year}`, `{month}`, `{ext}`) | ✅ |
+| 3.3 | Testes unitários do rule engine | ✅ |
 
 ## Fase 4: Core — Mover Ficheiros com Segurança
 
