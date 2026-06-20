@@ -8,7 +8,7 @@
 |---|---|---|
 | 1.1 | Criar estrutura de pastas + `pyproject.toml` + `.gitignore` + `git init` | ✅ |
 | 1.2 | Configurar `ruff` (linting/format) + `pytest` | ✅ |
-| 1.3 | Definir modelos Pydantic (`shared/models.py`) | ⬜ |
+| 1.3 | Definir modelos Pydantic (`shared/models.py`) | ✅ |
 | 1.4 | Implementar loader de configuração + `rules.yaml` exemplo | ⬜ |
 | 1.5 | Setup de logging estruturado (`structlog`) | ⬜ |
 

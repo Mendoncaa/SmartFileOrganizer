@@ -1,0 +1,81 @@
+# ──────────────────────────────────────────────
+# Smart File Organizer — Organization Rules
+# ──────────────────────────────────────────────
+# Each rule defines a condition (what to match) and a destination (where to move).
+# Destination supports templates: {year}, {month}, {day}, {ext}
+# Rules are evaluated by priority (higher = first). First match wins.
+
+rules:
+  - name: "PDF Documents"
+    priority: 10
+    condition:
+      extensions: [pdf]
+    destination: "~/Documents/PDFs/{year}/"
+
+  - name: "Invoices & Receipts"
+    priority: 20
+    condition:
+      extensions: [pdf]
+      name_pattern: "(?i)(fatura|invoice|recibo|receipt)"
+    destination: "~/Documents/Faturas/{year}/{month}/"
+
+  - name: "E-books"
+    priority: 15
+    condition:
+      extensions: [epub, mobi, azw3]
+    destination: "~/Livros/{year}/"
+
+  - name: "Images"
+    priority: 5
+    condition:
+      extensions: [jpg, jpeg, png, gif, webp, svg, bmp, tiff]
+    destination: "~/Pictures/{year}/{month}/"
+
+  - name: "Videos"
+    priority: 5
+    condition:
+      extensions: [mp4, mkv, avi, mov, wmv, flv, webm]
+    destination: "~/Videos/{year}/"
+
+  - name: "Music"
+    priority: 5
+    condition:
+      extensions: [mp3, flac, wav, aac, ogg, wma, m4a]
+    destination: "~/Music/{year}/"
+
+  - name: "Archives"
+    priority: 5
+    condition:
+      extensions: [zip, rar, 7z, tar, gz, bz2, xz]
+    destination: "~/Documents/Archives/{year}/"
+
+  - name: "Spreadsheets"
+    priority: 8
+    condition:
+      extensions: [xlsx, xls, csv, ods]
+    destination: "~/Documents/Spreadsheets/{year}/"
+
+  - name: "Presentations"
+    priority: 8
+    condition:
+      extensions: [pptx, ppt, odp, key]
+    destination: "~/Documents/Presentations/{year}/"
+
+  - name: "Code & Scripts"
+    priority: 5
+    condition:
+      extensions: [py, js, ts, go, rs, java, c, cpp, sh, bat, ps1]
+    destination: "~/Documents/Code/{year}/"
+
+  - name: "Installers"
+    priority: 12
+    condition:
+      extensions: [exe, msi, dmg, deb, rpm, appimage]
+    destination: "~/Downloads/Installers/{year}/"
+
+  - name: "Large Files (>500MB)"
+    priority: 3
+    enabled: false
+    condition:
+      min_size_mb: 500
+    destination: "~/LargeFiles/"
