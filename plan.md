@@ -32,9 +32,9 @@
 
 | Etapa | Descrição | Status |
 |---|---|---|
-| 4.1 | `mover.py` — move atómico + tratamento de conflitos | ⬜ |
-| 4.2 | Undo log (registo para reversão) | ⬜ |
-| 4.3 | Testes unitários do mover | ⬜ |
+| 4.1 | `mover.py` — move atómico + tratamento de conflitos | ✅ |
+| 4.2 | Undo log (registo para reversão) | ✅ |
+| 4.3 | Testes unitários do mover | ✅ |
 
 ## Fase 5: Core — Dispatcher (Orquestração)
 
