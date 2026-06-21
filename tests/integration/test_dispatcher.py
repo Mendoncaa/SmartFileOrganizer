@@ -118,6 +118,36 @@ class TestEndToEndPipeline:
         assert event.event_type == EventType.FILE_SKIPPED
         assert unknown.exists()  # Not moved
 
+    def test_invalid_template_emits_error_event(self, tmp_path: Path):
+        """A rule whose destination has an unknown placeholder yields an ERROR event."""
+        watch_dir = tmp_path / "downloads"
+        watch_dir.mkdir()
+
+        settings = Settings(
+            watch_folders=[WatchFolder(path=watch_dir)],
+            debounce_seconds=0.5,
+            ai={"enabled": False},
+        )
+        rules = RulesConfig(
+            rules=[
+                Rule(
+                    name="BrokenTemplate",
+                    priority=10,
+                    condition=RuleCondition(extensions=["pdf"]),
+                    destination="~/Documents/{unknown_var}/",
+                )
+            ]
+        )
+        dispatcher = Dispatcher(rules, settings)
+
+        f = watch_dir / "doc.pdf"
+        f.write_text("content", encoding="utf-8")
+
+        event = dispatcher.process_file(f)
+        assert event.event_type == EventType.ERROR
+        assert "destination template" in event.error_message.lower()
+        assert f.exists()  # File untouched
+
     def test_full_watcher_to_mover_pipeline(self, tmp_path: Path):
         """Full E2E: file created → watcher → debouncer → dispatcher → moved."""
         watch_dir = tmp_path / "downloads"

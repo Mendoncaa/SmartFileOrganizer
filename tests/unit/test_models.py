@@ -35,6 +35,14 @@ class TestRuleCondition:
         with pytest.raises(ValidationError):
             RuleCondition(min_size_mb=-1)
 
+    def test_name_pattern_length_capped(self):
+        # Overly long patterns are rejected to limit ReDoS risk.
+        with pytest.raises(ValidationError):
+            RuleCondition(name_pattern="a" * 201)
+        # A reasonable pattern is accepted.
+        cond = RuleCondition(name_pattern="(?i)(invoice|fatura)")
+        assert cond.name_pattern == "(?i)(invoice|fatura)"
+
 
 class TestRule:
     def test_full_rule_creation(self):

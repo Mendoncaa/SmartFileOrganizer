@@ -15,6 +15,11 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+# Undo log rotation: keep at most MAX_UNDO_RECORDS, trimming once the file
+# grows past UNDO_TRIM_THRESHOLD (hysteresis avoids rewriting on every append).
+MAX_UNDO_RECORDS = 1000
+UNDO_TRIM_THRESHOLD = 1200
+
 
 class MoveError(Exception):
     """Raised when a file move operation fails."""
@@ -63,9 +68,22 @@ class UndoLog:
         self._path.parent.mkdir(parents=True, exist_ok=True)
 
     def record(self, move: MoveRecord) -> None:
-        """Append a move record to the undo log."""
+        """Append a move record to the undo log, trimming if it grows too large."""
         with self._path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(move.to_dict()) + "\n")
+        self._maybe_trim()
+
+    def _maybe_trim(self) -> None:
+        """Trim the log to the last MAX_UNDO_RECORDS once it exceeds the threshold."""
+        try:
+            lines = [line for line in self._path.read_text(encoding="utf-8").splitlines() if line]
+        except OSError:
+            return
+        if len(lines) <= UNDO_TRIM_THRESHOLD:
+            return
+        kept = lines[-MAX_UNDO_RECORDS:]
+        self._path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+        logger.info("undo_log_trimmed", kept=len(kept), removed=len(lines) - len(kept))
 
     def get_history(self, limit: int = 100) -> list[MoveRecord]:
         """Read the last N move records."""

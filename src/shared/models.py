@@ -20,7 +20,9 @@ class RuleCondition(BaseModel):
 
     extensions: list[str] = Field(default_factory=list, description="File extensions (without dot)")
     name_pattern: str | None = Field(
-        default=None, description="Regex pattern to match against filename"
+        default=None,
+        max_length=200,
+        description="Regex pattern to match against filename (capped to limit ReDoS risk)",
     )
     min_size_mb: float | None = Field(default=None, ge=0, description="Minimum file size in MB")
     max_size_mb: float | None = Field(default=None, ge=0, description="Maximum file size in MB")

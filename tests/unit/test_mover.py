@@ -194,6 +194,29 @@ class TestUndoLog:
         log = UndoLog(tmp_path / "undo.jsonl")
         assert log.get_history() == []
 
+    def test_log_is_trimmed_when_too_large(self, tmp_path: Path):
+        from src.core.mover import MAX_UNDO_RECORDS, UNDO_TRIM_THRESHOLD
+
+        log_path = tmp_path / "undo.jsonl"
+        log = UndoLog(log_path)
+        for i in range(UNDO_TRIM_THRESHOLD + 5):
+            log.record(
+                MoveRecord(
+                    source=Path(f"/src/file{i}.pdf"),
+                    destination=Path(f"/dest/file{i}.pdf"),
+                    rule_name="Rule",
+                )
+            )
+
+        # After trimming, the log stays bounded (never grows unbounded) and was
+        # trimmed down towards MAX_UNDO_RECORDS rather than keeping all records.
+        lines = log_path.read_text(encoding="utf-8").splitlines()
+        assert MAX_UNDO_RECORDS <= len(lines) <= UNDO_TRIM_THRESHOLD
+        # The most recent record must be preserved after trimming.
+        history = log.get_history(limit=1)
+        last_index = UNDO_TRIM_THRESHOLD + 4
+        assert history[0].source == Path(f"/src/file{last_index}.pdf")
+
     def test_undo_last_moves_file_back(self, tmp_path: Path):
         # Setup: file already moved
         original_dir = tmp_path / "original"

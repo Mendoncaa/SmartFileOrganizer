@@ -98,20 +98,32 @@ class Dispatcher:
             self._emit_event(event)
             return event
 
-        # Step 2: Match against rules (thread-safe)
-        with self._lock:
-            match = find_matching_rule(self._rules, file_path)
+        # Step 2: Match against rules (thread-safe). A malformed destination
+        # template raises ValueError — surface it as an ERROR event instead of
+        # silently dying in the worker thread.
+        try:
+            with self._lock:
+                match = find_matching_rule(self._rules, file_path)
 
-        if match is None:
-            # Step 3: Try AI fallback
-            ai_rule = self._try_ai_classification(file_path)
-            if ai_rule is not None:
-                destination = resolve_destination_template(ai_rule.destination, file_path)
-                # Create a synthetic match for the move step
-                from src.core.analyzer.rule_engine import RuleMatch
+            if match is None:
+                # Step 3: Try AI fallback
+                ai_rule = self._try_ai_classification(file_path)
+                if ai_rule is not None:
+                    destination = resolve_destination_template(ai_rule.destination, file_path)
+                    # Create a synthetic match for the move step
+                    from src.core.analyzer.rule_engine import RuleMatch
 
-                match = RuleMatch(rule=ai_rule, resolved_destination=destination)
-                logger.info("ai_fallback_matched", file=file_path.name, rule=ai_rule.name)
+                    match = RuleMatch(rule=ai_rule, resolved_destination=destination)
+                    logger.info("ai_fallback_matched", file=file_path.name, rule=ai_rule.name)
+        except ValueError as e:
+            event = FileEvent(
+                event_type=EventType.ERROR,
+                source_path=file_path,
+                error_message=f"Invalid destination template: {e}",
+            )
+            logger.error("template_resolution_failed", file=file_path.name, error=str(e))
+            self._emit_event(event)
+            return event
 
         if match is None:
             # No rule and no AI match — skip
