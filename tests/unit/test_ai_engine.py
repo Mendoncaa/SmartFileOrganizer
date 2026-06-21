@@ -191,6 +191,39 @@ class TestAIEngine:
         assert result is not None
         assert result.rule_name == "PDFs"
 
+    def test_recovers_after_ollama_comes_back(self, tmp_path: Path):
+        """AI engine should retry periodically after failures, not stay dead."""
+        engine = AIEngine(self._make_settings(), self._make_rules())
+        f = tmp_path / "doc.pdf"
+        f.write_text("content", encoding="utf-8")
+
+        # Below threshold — still available
+        engine._consecutive_failures = 2
+        assert engine.is_available
+
+        # At threshold but NOT a retry multiple — backed off
+        engine._consecutive_failures = 5
+        assert not engine.is_available  # 5 >= 3 and 5 % 10 != 0
+
+        # At a retry multiple (every 10th failure) — available again for one try
+        engine._consecutive_failures = 10
+        assert engine.is_available  # 10 % 10 == 0 → retry
+
+        # Non-retry failure count
+        engine._consecutive_failures = 13
+        assert not engine.is_available  # 13 % 10 != 0
+
+        # Simulate recovery — Ollama responds at retry point
+        engine._consecutive_failures = 20  # retry window (20 % 10 == 0)
+        mock_response = json.dumps({"rule_name": "PDFs", "confidence": 0.9})
+        with patch.object(engine, "_call_ollama", return_value=mock_response):
+            result = engine.classify_file(f)
+
+        assert result is not None
+        assert result.rule_name == "PDFs"
+        assert engine._consecutive_failures == 0  # Reset on success
+        assert engine.is_available  # Fully recovered
+
 
 class TestDispatcherWithAI:
     """Test the dispatcher with AI fallback integration."""

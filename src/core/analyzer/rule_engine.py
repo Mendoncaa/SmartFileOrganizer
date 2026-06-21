@@ -74,7 +74,12 @@ def _matches_name_pattern(file_path: Path, pattern: str | None) -> bool:
     """Check if the filename matches the regex pattern."""
     if pattern is None:
         return True  # No pattern = matches all
-    return bool(re.search(pattern, file_path.name))
+    try:
+        compiled = re.compile(pattern)
+        return bool(compiled.search(file_path.name))
+    except re.error:
+        logger.warning("invalid_regex_pattern", pattern=pattern)
+        return False
 
 
 def _matches_size(file_path: Path, min_mb: float | None, max_mb: float | None) -> bool:

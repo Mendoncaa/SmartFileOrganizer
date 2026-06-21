@@ -5,6 +5,7 @@ Pipeline: file detected → rule matching → (AI fallback) → move file → em
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path  # noqa: TC003 — used at runtime
 from typing import TYPE_CHECKING
 
@@ -42,6 +43,7 @@ class Dispatcher:
         self._undo_log = undo_log
         self._event_listeners: list[callable] = []
         self._ai_engine: AIEngine | None = None
+        self._lock = threading.Lock()
 
         # Initialize AI engine if enabled
         if settings.ai.enabled:
@@ -77,7 +79,7 @@ class Dispatcher:
         """
         logger.info("processing_file", file=str(file_path))
 
-        # Step 1: Verify file exists
+        # Step 1: Verify file exists and is not a symlink
         if not file_path.exists():
             event = FileEvent(
                 event_type=EventType.ERROR,
@@ -87,8 +89,18 @@ class Dispatcher:
             self._emit_event(event)
             return event
 
-        # Step 2: Match against rules
-        match = find_matching_rule(self._rules, file_path)
+        if file_path.is_symlink():
+            event = FileEvent(
+                event_type=EventType.FILE_SKIPPED,
+                source_path=file_path,
+                error_message="Symlinks are skipped for safety",
+            )
+            self._emit_event(event)
+            return event
+
+        # Step 2: Match against rules (thread-safe)
+        with self._lock:
+            match = find_matching_rule(self._rules, file_path)
 
         if match is None:
             # Step 3: Try AI fallback

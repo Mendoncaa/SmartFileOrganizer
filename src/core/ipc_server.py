@@ -123,13 +123,17 @@ class IPCServer:
 
     def _command_loop(self) -> None:
         """Background loop that listens for commands on the REP socket."""
+        if self._rep_socket is None:
+            logger.error("command_loop_socket_not_initialized")
+            return
+
         poller = zmq.Poller()
         poller.register(self._rep_socket, zmq.POLLIN)
 
         while self._running:
             try:
                 sockets = dict(poller.poll(timeout=500))  # 500ms poll timeout
-                if self._rep_socket in sockets:
+                if self._rep_socket and self._rep_socket in sockets:
                     message = self._rep_socket.recv_string()
                     response = self._handle_command(message)
                     self._rep_socket.send_string(response)

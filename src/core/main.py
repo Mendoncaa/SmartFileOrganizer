@@ -108,9 +108,23 @@ class CoreService:
         }
 
     def _handle_reload(self) -> str:
-        # Re-read config (basic implementation — restarts would be more robust)
-        logger.info("reloading_config")
-        return "reloaded"
+        """Reload rules and settings from disk."""
+        try:
+            from src.shared.config import load_rules, load_settings
+
+            settings = load_settings(base_dir=self._config_dir)
+            rules = load_rules(base_dir=self._config_dir)
+
+            undo_log = UndoLog(self._config_dir / "data" / "undo.jsonl")
+            self._dispatcher = Dispatcher(rules, settings, undo_log)
+            if self._ipc_server:
+                self._dispatcher.add_event_listener(self._ipc_server.publish_event)
+
+            logger.info("config_reloaded_successfully")
+            return "reloaded"
+        except Exception as e:
+            logger.error("config_reload_failed", error=str(e))
+            return f"error: {e}"
 
 
 def main() -> None:

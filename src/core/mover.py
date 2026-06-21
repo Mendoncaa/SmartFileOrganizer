@@ -99,14 +99,15 @@ class UndoLog:
             logger.warning("undo_file_missing", path=str(dest))
             return None
 
-        # Move file back
-        source.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(dest), str(source))
-        logger.info("undo_move", source=str(dest), destination=str(source))
-
-        # Remove the last line from the log
-        self._remove_last_line()
-        return record
+        try:
+            source.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(dest), str(source))
+            logger.info("undo_move", source=str(dest), destination=str(source))
+            self._remove_last_line()
+            return record
+        except OSError as e:
+            logger.error("undo_failed", error=str(e), path=str(dest))
+            return None
 
     def _remove_last_line(self) -> None:
         """Remove the last line from the undo log file."""
@@ -185,6 +186,12 @@ def move_file(
         raise MoveError(f"Source file does not exist: {source}")
     if not source.is_file():
         raise MoveError(f"Source is not a file: {source}")
+    if source.is_symlink():
+        raise MoveError(f"Refusing to move symlink: {source}")
+
+    # Validate destination directory
+    if destination_dir.exists() and not destination_dir.is_dir():
+        raise MoveError(f"Destination exists but is not a directory: {destination_dir}")
 
     # Ensure destination directory exists
     destination_dir.mkdir(parents=True, exist_ok=True)

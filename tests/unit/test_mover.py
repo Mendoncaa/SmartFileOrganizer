@@ -128,6 +128,25 @@ class TestMoveFile:
         with pytest.raises(MoveError, match="not a file"):
             move_file(src, tmp_path / "dest")
 
+    def test_symlink_source_raises(self, tmp_path: Path):
+        target = tmp_path / "real.pdf"
+        target.write_text("content", encoding="utf-8")
+        link = tmp_path / "link.pdf"
+        try:
+            link.symlink_to(target)
+        except OSError:
+            pytest.skip("Symlinks require elevated privileges on this OS")
+        with pytest.raises(MoveError, match="symlink"):
+            move_file(link, tmp_path / "dest")
+
+    def test_destination_is_file_raises(self, tmp_path: Path):
+        src = tmp_path / "file.pdf"
+        src.write_text("content", encoding="utf-8")
+        dest_as_file = tmp_path / "not_a_dir"
+        dest_as_file.write_text("I'm a file", encoding="utf-8")
+        with pytest.raises(MoveError, match="not a directory"):
+            move_file(src, dest_as_file)
+
     def test_records_in_undo_log(self, tmp_path: Path):
         src = tmp_path / "file.pdf"
         src.write_text("content", encoding="utf-8")

@@ -34,6 +34,9 @@ class _NewFileHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         path = Path(event.src_path)
+        if path.is_symlink():
+            logger.debug("skipping_symlink", path=str(path))
+            return
         logger.info("file_detected", path=str(path))
         self._callback(path)
 
@@ -42,6 +45,9 @@ class _NewFileHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         path = Path(event.dest_path)
+        if path.is_symlink():
+            logger.debug("skipping_symlink", path=str(path))
+            return
         logger.info("file_detected_via_move", path=str(path))
         self._callback(path)
 

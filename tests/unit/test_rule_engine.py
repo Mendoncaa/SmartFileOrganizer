@@ -98,6 +98,14 @@ class TestMatchesNamePattern:
             r"\d{4}-\d{2}-\d{2}",
         )
 
+    def test_invalid_regex_returns_false(self):
+        """Invalid regex patterns should return False, not crash."""
+        assert not _matches_name_pattern(Path("file.pdf"), r"[unclosed")
+
+    def test_malformed_regex_group(self):
+        """Malformed regex should be handled safely."""
+        assert not _matches_name_pattern(Path("file.pdf"), r"(?P<x")
+
 
 class TestMatchesSize:
     def test_within_range(self, tmp_path: Path):

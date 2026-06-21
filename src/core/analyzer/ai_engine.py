@@ -51,11 +51,17 @@ class AIEngine:
     def __init__(self, settings: AISettings, rules_config: RulesConfig) -> None:
         self._settings = settings
         self._rules = rules_config
-        self._available = self._settings.enabled
+        self._consecutive_failures = 0
+        self._max_failures_before_backoff = 3
 
     @property
     def is_available(self) -> bool:
-        return self._available
+        if not self._settings.enabled:
+            return False
+        # Re-enable after backoff period (every 10 calls after failure threshold)
+        if self._consecutive_failures >= self._max_failures_before_backoff:
+            return self._consecutive_failures % 10 == 0
+        return True
 
     def classify_file(self, file_path: Path) -> AIClassificationResult | None:
         """Classify a file using Ollama.
@@ -66,7 +72,8 @@ class AIEngine:
         Returns:
             AIClassificationResult if successful, None otherwise.
         """
-        if not self._available:
+        if not self.is_available:
+            self._consecutive_failures += 1
             return None
 
         # Check file size limit
@@ -90,6 +97,9 @@ class AIEngine:
         response_text = self._call_ollama(prompt)
         if response_text is None:
             return None
+
+        # Success — reset failure counter
+        self._consecutive_failures = 0
 
         # Parse response
         return self._parse_response(response_text)
@@ -173,8 +183,12 @@ class AIEngine:
                 return data.get("response", "")
 
         except Exception as e:
-            logger.debug("ollama_request_failed", error=str(e))
-            self._available = False
+            self._consecutive_failures += 1
+            logger.debug(
+                "ollama_request_failed",
+                error=str(e),
+                failures=self._consecutive_failures,
+            )
             return None
 
     def _parse_response(self, response_text: str) -> AIClassificationResult | None:
