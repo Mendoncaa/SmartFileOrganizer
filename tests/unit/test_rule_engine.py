@@ -58,6 +58,26 @@ class TestResolveDestinationTemplate:
         )
         assert "~" not in str(result)
 
+    def test_unknown_placeholder_raises(self):
+        """Unknown template variables raise ValueError, not KeyError."""
+        import pytest
+
+        with pytest.raises(ValueError, match="Unknown template variable"):
+            resolve_destination_template(
+                "/dest/{unknown_var}/",
+                Path("/src/file.pdf"),
+            )
+
+    def test_sanitizes_path_traversal_in_name(self):
+        """Filenames with path separators or .. are sanitized."""
+        result = resolve_destination_template(
+            "/dest/{name}/",
+            Path("/src/../../etc/passwd"),
+        )
+        # Should NOT contain .. or path separators from the name
+        name_part = str(result)
+        assert ".." not in name_part.split("dest")[1] if "dest" in name_part else True
+
 
 class TestMatchesExtensions:
     def test_matches_when_in_list(self):

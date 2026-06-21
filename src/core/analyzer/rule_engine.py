@@ -45,21 +45,32 @@ def resolve_destination_template(template: str, file_path: Path) -> Path:
 
     Returns:
         Resolved absolute Path.
+
+    Raises:
+        ValueError: If template contains unknown placeholders.
     """
     now = datetime.now()
     ext = file_path.suffix.lstrip(".").lower()
+
+    # Sanitize name/filename — remove path separators and traversal patterns
+    safe_name = file_path.stem.replace("/", "_").replace("\\", "_").replace("..", "_")
+    safe_filename = file_path.name.replace("/", "_").replace("\\", "_").replace("..", "_")
 
     variables = {
         "year": now.strftime("%Y"),
         "month": now.strftime("%m"),
         "day": now.strftime("%d"),
         "ext": ext,
-        "name": file_path.stem,
-        "filename": file_path.name,
+        "name": safe_name,
+        "filename": safe_filename,
     }
 
-    resolved = template.format(**variables)
-    return Path(resolved).expanduser()
+    try:
+        resolved = template.format(**variables)
+    except KeyError as e:
+        raise ValueError(f"Unknown template variable in destination: {e}") from e
+
+    return Path(resolved).expanduser().resolve()
 
 
 def _matches_extensions(file_path: Path, extensions: list[str]) -> bool:

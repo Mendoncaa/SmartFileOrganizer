@@ -20,7 +20,10 @@ class CoreService:
     """Main orchestrator that wires all components together."""
 
     def __init__(self, config_dir: Path | None = None) -> None:
-        self._config_dir = config_dir or Path.cwd()
+        if config_dir is None:
+            # Resolve from package location (works even when CWD is System32)
+            config_dir = Path(__file__).resolve().parent.parent.parent
+        self._config_dir = config_dir
         self._watcher: FolderWatcher | None = None
         self._debouncer: FileDebouncer | None = None
         self._dispatcher: Dispatcher | None = None
@@ -108,19 +111,39 @@ class CoreService:
         }
 
     def _handle_reload(self) -> str:
-        """Reload rules and settings from disk."""
+        """Reload rules, settings, watcher, and debouncer from disk."""
         try:
-            from src.shared.config import load_rules, load_settings
-
             settings = load_settings(base_dir=self._config_dir)
             rules = load_rules(base_dir=self._config_dir)
 
+            # Stop current watcher + debouncer
+            if self._watcher:
+                self._watcher.stop()
+            if self._debouncer:
+                self._debouncer.cancel_all()
+
+            # Rebuild dispatcher
             undo_log = UndoLog(self._config_dir / "data" / "undo.jsonl")
             self._dispatcher = Dispatcher(rules, settings, undo_log)
             if self._ipc_server:
                 self._dispatcher.add_event_listener(self._ipc_server.publish_event)
 
-            logger.info("config_reloaded_successfully")
+            # Rebuild debouncer + watcher with new settings
+            self._debouncer = FileDebouncer(
+                callback=self._process_file,
+                delay=settings.debounce_seconds,
+            )
+            folders = [
+                (wf.path, wf.recursive)
+                for wf in settings.watch_folders
+                if wf.enabled
+            ]
+            self._watcher = FolderWatcher(
+                folders=folders, callback=self._debouncer.file_detected
+            )
+            self._watcher.start()
+
+            logger.info("config_reloaded_successfully", watch_folders=len(folders))
             return "reloaded"
         except Exception as e:
             logger.error("config_reload_failed", error=str(e))

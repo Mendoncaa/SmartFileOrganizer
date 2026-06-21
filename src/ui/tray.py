@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PyQt6.QtGui import QAction, QIcon
@@ -9,6 +10,8 @@ from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from src.shared.constants import ServiceCommand
 from src.shared.logging import get_logger
+from src.ui.dashboard import DashboardWindow
+from src.ui.rules_editor import RulesEditorWindow
 
 if TYPE_CHECKING:
     from src.ui.ipc_client import IPCClient
@@ -28,6 +31,9 @@ class SystemTray:
         self._app: QApplication | None = None
         self._tray: QSystemTrayIcon | None = None
         self._paused = False
+        # Keep references to prevent GC from destroying windows
+        self._dashboard: DashboardWindow | None = None
+        self._rules_editor: RulesEditorWindow | None = None
 
     def setup(self, app: QApplication) -> None:
         """Set up the tray icon and menu."""
@@ -46,11 +52,19 @@ class SystemTray:
         # Create context menu
         menu = QMenu()
 
+        dashboard_action = QAction("Open Dashboard", app)
+        dashboard_action.triggered.connect(self._open_dashboard)
+        menu.addAction(dashboard_action)
+
+        rules_action = QAction("Edit Rules", app)
+        rules_action.triggered.connect(self._open_rules_editor)
+        menu.addAction(rules_action)
+
+        menu.addSeparator()
+
         self._pause_action = QAction("Pause", app)
         self._pause_action.triggered.connect(self._toggle_pause)
         menu.addAction(self._pause_action)
-
-        menu.addSeparator()
 
         status_action = QAction("Status", app)
         status_action.triggered.connect(self._show_status)
@@ -70,6 +84,22 @@ class SystemTray:
         self._tray.show()
 
         logger.info("tray_icon_shown")
+
+    def _open_dashboard(self) -> None:
+        """Open or focus the dashboard window."""
+        if self._dashboard is None:
+            self._dashboard = DashboardWindow(self._client)
+        self._dashboard.show()
+        self._dashboard.raise_()
+        self._dashboard.activateWindow()
+
+    def _open_rules_editor(self) -> None:
+        """Open or focus the rules editor window."""
+        if self._rules_editor is None:
+            self._rules_editor = RulesEditorWindow(Path("config/rules.yaml"))
+        self._rules_editor.show()
+        self._rules_editor.raise_()
+        self._rules_editor.activateWindow()
 
     def _toggle_pause(self) -> None:
         """Toggle between pause and resume."""

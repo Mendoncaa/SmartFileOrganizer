@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path  # noqa: TC003 — used at runtime
 from typing import Protocol
 
@@ -28,6 +29,7 @@ class FileDebouncer:
         callback: Function to call when the file is stable.
         delay: Seconds to wait before checking stability.
         max_retries: Maximum number of stability checks before giving up.
+        max_workers: Maximum concurrent file processing threads.
     """
 
     def __init__(
@@ -35,6 +37,7 @@ class FileDebouncer:
         callback: StableFileCallback,
         delay: float = 2.0,
         max_retries: int = 15,
+        max_workers: int = 4,
     ) -> None:
         self._callback = callback
         self._delay = delay
@@ -43,6 +46,9 @@ class FileDebouncer:
         self._sizes: dict[Path, int] = {}
         self._retries: dict[Path, int] = {}
         self._lock = threading.Lock()
+        self._executor = ThreadPoolExecutor(
+            max_workers=max_workers, thread_name_prefix="sfo-worker"
+        )
 
     def file_detected(self, path: Path) -> None:
         """Called when a new file is detected. Starts the debounce timer."""
@@ -87,11 +93,8 @@ class FileDebouncer:
                     checks=retries + 1,
                 )
                 self._cleanup(path)
-                # Call outside lock to avoid deadlocks
-                callback = self._callback
-                threading.Thread(
-                    target=callback, args=[path], daemon=True, name=f"process-{path.name}"
-                ).start()
+                # Submit to thread pool (back-pressure via max_workers)
+                self._executor.submit(self._safe_callback, path)
             elif retries >= self._max_retries:
                 # Give up after too many retries
                 logger.warning(
@@ -126,14 +129,25 @@ class FileDebouncer:
         self._sizes.pop(path, None)
         self._retries.pop(path, None)
 
+    def _safe_callback(self, path: Path) -> None:
+        """Invoke callback with error handling (runs in thread pool)."""
+        if not path.exists():
+            logger.debug("file_disappeared_before_processing", path=str(path))
+            return
+        try:
+            self._callback(path)
+        except Exception:
+            logger.exception("callback_error", path=str(path))
+
     def cancel_all(self) -> None:
-        """Cancel all pending debounce timers."""
+        """Cancel all pending debounce timers and shutdown thread pool."""
         with self._lock:
             for timer in self._pending.values():
                 timer.cancel()
             self._pending.clear()
             self._sizes.clear()
             self._retries.clear()
+        self._executor.shutdown(wait=False, cancel_futures=True)
 
     @property
     def pending_count(self) -> int:

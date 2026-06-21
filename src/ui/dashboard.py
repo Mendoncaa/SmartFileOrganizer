@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import pyqtSlot
+from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -22,9 +22,18 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+# Maximum rows in the event table to prevent memory leak
+_MAX_TABLE_ROWS = 500
+
 
 class DashboardWindow(QMainWindow):
-    """Main dashboard window showing real-time file organization events."""
+    """Main dashboard window showing real-time file organization events.
+
+    Uses a pyqtSignal to safely marshal events from the IPC background
+    thread to the Qt GUI thread (Qt requires all widget ops on GUI thread).
+    """
+
+    _event_received = pyqtSignal(dict)
 
     def __init__(self, ipc_client: IPCClient) -> None:
         super().__init__()
@@ -35,7 +44,10 @@ class DashboardWindow(QMainWindow):
         self._error_count = 0
 
         self._setup_ui()
-        self._client.on_event(self._on_event)
+        # Connect signal→slot (queued connection auto-marshals to GUI thread)
+        self._event_received.connect(self._on_event)
+        # IPC callback emits the signal (safe from any thread)
+        self._client.on_event(self._event_received.emit)
 
     def _setup_ui(self) -> None:
         """Build the dashboard UI."""
@@ -72,9 +84,9 @@ class DashboardWindow(QMainWindow):
         self._table.setAlternatingRowColors(True)
         layout.addWidget(self._table)
 
-    @pyqtSlot()
+    @pyqtSlot(dict)
     def _on_event(self, event_data: dict) -> None:
-        """Handle incoming event from the IPC client."""
+        """Handle incoming event (runs on GUI thread via signal)."""
         self._event_count += 1
         event_type = event_data.get("event_type", "unknown")
 
@@ -91,6 +103,10 @@ class DashboardWindow(QMainWindow):
         self._lbl_skipped.setText(f"Skipped: {self._skipped_count}")
         self._lbl_errors.setText(f"Errors: {self._error_count}")
 
+        # Trim table to prevent memory leak
+        while self._table.rowCount() >= _MAX_TABLE_ROWS:
+            self._table.removeRow(0)
+
         # Add row to table
         row = self._table.rowCount()
         self._table.insertRow(row)
@@ -102,10 +118,10 @@ class DashboardWindow(QMainWindow):
             event_data.get("source_path", "").split("/")[-1].split("\\")[-1]
         ))
         self._table.setItem(row, 3, QTableWidgetItem(
-            event_data.get("rule_name", "—")
+            event_data.get("rule_name") or "—"
         ))
         self._table.setItem(row, 4, QTableWidgetItem(
-            event_data.get("destination_path", "—") or "—"
+            event_data.get("destination_path") or "—"
         ))
 
         # Auto-scroll to bottom
